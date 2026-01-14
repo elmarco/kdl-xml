@@ -1,0 +1,32 @@
+[package]
+name = "kdl-xml"
+version = "0.1.0"
+authors = ["Marc-André Lureau <marcandre.lureau@redhat.com>"]
+description = "XML<->KDL conversion"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/elmarco/kdl-xml"
+readme = "README.md"
+keywords = ["kdl", "xml"]
+categories = ["text-processing"]
+edition = "2024"
+
+[lib]
+name = "kdl_xml"
+path = "src/lib.rs"
+
+[[bin]]
+name = "xml2kdl"
+path = "src/bin/xml2kdl.rs"
+
+[[bin]]
+name = "kdl2xml"
+path = "src/bin/kdl2xml.rs"
+
+[dependencies]
+kdl = "6.5.0"
+quick-xml = "0.39.0"
+clap = { version = "4", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+pretty_assertions = "1"
