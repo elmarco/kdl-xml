@@ -2,7 +2,7 @@
 
 [![codecov](https://codecov.io/gh/elmarco/kdl-xml/graph/badge.svg)](https://codecov.io/gh/elmarco/kdl-xml)
 
-Bidirectional XML to KDL conversion following the [XiK (XML in KDL)](https://kdl.dev/xik/) specification.
+Bidirectional XML to KDL conversion following the [XiK (XML in KDL)](https://github.com/kdl-org/kdl/blob/main/XML-IN-KDL.md) specification.
 
 ## Features
 
