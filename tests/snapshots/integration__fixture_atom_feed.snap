@@ -1,0 +1,30 @@
+---
+source: tests/integration.rs
+expression: kdl
+---
+?xml version="1.0" encoding=UTF-8
+feed xmlns="http://www.w3.org/2005/Atom" {
+    title "Example Feed"
+    link href="http://example.org/"
+    updated "2024-01-01T00:00:00Z"
+    author {
+        name "John Doe"
+        email john@example.org
+    }
+    id urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6
+    entry {
+        title "First Post"
+        link href="http://example.org/2024/01/01/first"
+        id urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a
+        updated "2024-01-01T00:00:00Z"
+        summary "This is the first post."
+        content type=html "<p>Welcome to my blog!</p>"
+    }
+    entry {
+        title "Second Post"
+        link href="http://example.org/2024/01/02/second"
+        id urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6b
+        updated "2024-01-02T00:00:00Z"
+        summary "This is the second post."
+    }
+}

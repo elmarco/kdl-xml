@@ -1,0 +1,41 @@
+---
+source: tests/integration.rs
+expression: kdl
+---
+?xml version="1.0" encoding=UTF-8
+html xmlns="http://www.w3.org/1999/xhtml" lang=en {
+    head {
+        meta charset=utf-8
+        title "Sample Document"
+        link rel=stylesheet href=style.css
+    }
+    body {
+        header {
+            h1 Welcome
+            nav {
+                a href="/" Home
+                a href="/about" About
+            }
+        }
+        main {
+            article {
+                h2 "Article Title"
+                p {
+                    - "This is a "
+                    strong sample
+                    - " paragraph with "
+                    em mixed
+                    - " content."
+                }
+                ul {
+                    li "Item 1"
+                    li "Item 2"
+                    li "Item 3"
+                }
+            }
+        }
+        footer {
+            p "Copyright 2024"
+        }
+    }
+}

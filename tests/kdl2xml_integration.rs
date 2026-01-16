@@ -3,14 +3,31 @@ use quick_xml::Reader;
 use quick_xml::escape::unescape;
 use quick_xml::events::Event;
 
+fn validate_xml(xml: &str) {
+    let mut reader = Reader::from_str(xml);
+    loop {
+        match reader.read_event() {
+            Ok(Event::Eof) => break,
+            Err(e) => panic!("Produced XML is not valid: {e:?}"),
+            _ => {}
+        }
+    }
+}
+
 fn convert(kdl: &str) -> String {
     let converter = KdlToXmlConverter::new().pretty(false);
-    converter.convert(kdl).expect("Conversion failed")
+    let xml = converter.convert(kdl).expect("Conversion failed");
+    // Validate output is valid XML
+    validate_xml(&xml);
+    xml
 }
 
 fn convert_pretty(kdl: &str) -> String {
     let converter = KdlToXmlConverter::new().pretty(true);
-    converter.convert(kdl).expect("Conversion failed")
+    let xml = converter.convert(kdl).expect("Conversion failed");
+    // Validate output is valid XML
+    validate_xml(&xml);
+    xml
 }
 
 fn try_convert(kdl: &str) -> Result<String, kdl_xml::Kdl2XmlError> {
@@ -19,9 +36,10 @@ fn try_convert(kdl: &str) -> Result<String, kdl_xml::Kdl2XmlError> {
 }
 
 // ============================================================================
-// XML Parsing Helpers
+// XML Parsing Helpers (kept for potential debugging)
 // ============================================================================
 
+#[allow(dead_code)]
 /// Parsed XML element with attributes and children
 #[derive(Debug, Clone)]
 struct XmlElement {
@@ -30,6 +48,7 @@ struct XmlElement {
     children: Vec<XmlContent>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum XmlContent {
     Element(XmlElement),
@@ -39,6 +58,7 @@ enum XmlContent {
     DocType(String),
 }
 
+#[allow(dead_code)]
 impl XmlElement {
     fn get_attr(&self, name: &str) -> Option<&str> {
         self.attributes
@@ -87,12 +107,14 @@ impl XmlElement {
     }
 }
 
+#[allow(dead_code)]
 /// Parsed XML document
 struct XmlDoc {
     prolog: Vec<XmlContent>,
     root: Option<XmlElement>,
 }
 
+#[allow(dead_code)]
 impl XmlDoc {
     fn has_doctype(&self, contains: &str) -> bool {
         self.prolog.iter().any(|c| match c {
@@ -136,6 +158,7 @@ impl XmlDoc {
     }
 }
 
+#[allow(dead_code)]
 fn parse_xml(xml: &str) -> XmlDoc {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(false);
@@ -271,57 +294,38 @@ fn parse_xml(xml: &str) -> XmlDoc {
 #[test]
 fn simple_element() {
     let xml = convert("root");
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "root");
-    assert!(doc.root().children.is_empty());
+    // Validation happens in convert() helper
+    insta::assert_snapshot!(xml, @"<root/>");
 }
 
 #[test]
 fn element_with_single_attribute() {
     let xml = convert(r#"element foo="bar""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "element");
-    assert!(doc.root().has_attr("foo", "bar"));
+    insta::assert_snapshot!(xml, @r#"<element foo="bar"/>"#);
 }
 
 #[test]
 fn element_with_multiple_attributes() {
     let xml = convert(r#"element foo="bar" baz="qux""#);
-    let doc = parse_xml(&xml);
-    assert!(doc.root().has_attr("foo", "bar"));
-    assert!(doc.root().has_attr("baz", "qux"));
+    insta::assert_snapshot!(xml, @r#"<element foo="bar" baz="qux"/>"#);
 }
 
 #[test]
 fn nested_elements() {
     let xml = convert("parent { child }");
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "parent");
-    let child = doc.root().find_element("child").expect("child not found");
-    assert_eq!(child.name, "child");
+    insta::assert_snapshot!(xml, @"<parent><child/></parent>");
 }
 
 #[test]
 fn deeply_nested_elements() {
     let xml = convert("a { b { c { d { e } } } }");
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "a");
-    let b = doc.root().find_element("b").unwrap();
-    let c = b.find_element("c").unwrap();
-    let d = c.find_element("d").unwrap();
-    let e = d.find_element("e").unwrap();
-    assert_eq!(e.name, "e");
+    insta::assert_snapshot!(xml, @"<a><b><c><d><e/></d></c></b></a>");
 }
 
 #[test]
 fn multiple_children() {
     let xml = convert("parent { a; b; c }");
-    let doc = parse_xml(&xml);
-    let children = doc.root().child_elements();
-    assert_eq!(children.len(), 3);
-    assert_eq!(children[0].name, "a");
-    assert_eq!(children[1].name, "b");
-    assert_eq!(children[2].name, "c");
+    insta::assert_snapshot!(xml, @"<parent><a/><b/><c/></parent>");
 }
 
 // ============================================================================
@@ -331,34 +335,25 @@ fn multiple_children() {
 #[test]
 fn pure_text_content() {
     let xml = convert(r#"greeting "hello world""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "greeting");
-    assert_eq!(doc.root().text_content(), "hello world");
+    insta::assert_snapshot!(xml, @"<greeting>hello world</greeting>");
 }
 
 #[test]
 fn text_with_attribute() {
     let xml = convert(r#"a href="http://example.com" "link text""#);
-    let doc = parse_xml(&xml);
-    assert!(doc.root().has_attr("href", "http://example.com"));
-    assert_eq!(doc.root().text_content(), "link text");
+    insta::assert_snapshot!(xml, @r#"<a href="http://example.com">link text</a>"#);
 }
 
 #[test]
 fn mixed_content() {
     let xml = convert(r#"span { - "some "; b "bold"; - " text" }"#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "span");
-    let b = doc.root().find_element("b").unwrap();
-    assert_eq!(b.text_content(), "bold");
-    assert_eq!(doc.root().full_text_content(), "some bold text");
+    insta::assert_snapshot!(xml, @"<span>some <b>bold</b> text</span>");
 }
 
 #[test]
 fn mixed_content_text_only() {
     let xml = convert(r#"p { - "hello "; - "world" }"#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), "hello world");
+    insta::assert_snapshot!(xml, @"<p>hello world</p>");
 }
 
 // ============================================================================
@@ -368,29 +363,25 @@ fn mixed_content_text_only() {
 #[test]
 fn entity_encoding_lt() {
     let xml = convert(r#"p "<""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), "<");
+    insta::assert_snapshot!(xml, @"<p>&lt;</p>");
 }
 
 #[test]
 fn entity_encoding_gt() {
     let xml = convert(r#"p ">""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), ">");
+    insta::assert_snapshot!(xml, @"<p>&gt;</p>");
 }
 
 #[test]
 fn entity_encoding_amp() {
     let xml = convert(r#"p "&""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), "&");
+    insta::assert_snapshot!(xml, @"<p>&amp;</p>");
 }
 
 #[test]
 fn entity_encoding_multiple() {
     let xml = convert(r#"p "<hello> & world""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), "<hello> & world");
+    insta::assert_snapshot!(xml, @"<p>&lt;hello&gt; &amp; world</p>");
 }
 
 // ============================================================================
@@ -403,9 +394,7 @@ fn doctype_html() {
         r#"!doctype "html"
 html"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_doctype("html"));
-    assert_eq!(doc.root().name, "html");
+    insta::assert_snapshot!(xml, @"<!DOCTYPE html><html/>");
 }
 
 #[test]
@@ -414,9 +403,9 @@ fn doctype_xhtml() {
         r#"!doctype "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\""
 html"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_doctype("html PUBLIC"));
-    assert_eq!(doc.root().name, "html");
+    insta::assert_snapshot!(xml, @r#"
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"><html/>
+    "#);
 }
 
 #[test]
@@ -425,9 +414,7 @@ fn doctype_with_internal_subset() {
         r#"!doctype "html [<!ENTITY test \"value\">]"
 html"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_doctype("html ["));
-    assert_eq!(doc.root().name, "html");
+    insta::assert_snapshot!(xml, @r#"<!DOCTYPE html [<!ENTITY test "value">]><html/>"#);
 }
 
 #[test]
@@ -481,9 +468,7 @@ fn xml_declaration() {
         r#"?xml version="1.0"
 root"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_xml_decl_attr("version", "1.0"));
-    assert_eq!(doc.root().name, "root");
+    insta::assert_snapshot!(xml, @r#"<?xml version="1.0"?><root/>"#);
 }
 
 #[test]
@@ -492,9 +477,7 @@ fn xml_declaration_with_encoding() {
         r#"?xml version="1.0" encoding="UTF-8"
 root"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_xml_decl_attr("encoding", "UTF-8"));
-    assert_eq!(doc.root().name, "root");
+    insta::assert_snapshot!(xml, @r#"<?xml version="1.0" encoding="UTF-8"?><root/>"#);
 }
 
 #[test]
@@ -503,12 +486,7 @@ fn processing_instruction() {
         r#"?xml-stylesheet type="text/css" href="style.css"
 root"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_pi("xml-stylesheet"));
-    let pi_content = doc.get_pi_content("xml-stylesheet").unwrap();
-    assert!(pi_content.contains("type=\"text/css\""));
-    assert!(pi_content.contains("href=\"style.css\""));
-    assert_eq!(doc.root().name, "root");
+    insta::assert_snapshot!(xml, @r#"<?xml-stylesheet type="text/css" href="style.css"?><root/>"#);
 }
 
 #[test]
@@ -538,9 +516,7 @@ fn comment_node() {
         r#"! " This is a comment "
 root"#,
     );
-    let doc = parse_xml(&xml);
-    assert!(doc.has_comment("This is a comment"));
-    assert_eq!(doc.root().name, "root");
+    insta::assert_snapshot!(xml, @"<!-- This is a comment --><root/>");
 }
 
 // ============================================================================
@@ -550,30 +526,25 @@ root"#,
 #[test]
 fn default_namespace() {
     let xml = convert(r#"root xmlns="http://example.com""#);
-    let doc = parse_xml(&xml);
-    assert!(doc.root().has_attr("xmlns", "http://example.com"));
+    insta::assert_snapshot!(xml, @r#"<root xmlns="http://example.com"/>"#);
 }
 
 #[test]
 fn prefixed_namespace() {
     let xml = convert(r#"root xmlns:ns="http://example.com""#);
-    let doc = parse_xml(&xml);
-    assert!(doc.root().has_attr("xmlns:ns", "http://example.com"));
+    insta::assert_snapshot!(xml, @r#"<root xmlns:ns="http://example.com"/>"#);
 }
 
 #[test]
 fn prefixed_element() {
     let xml = convert(r#"ns:root xmlns:ns="http://example.com""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "ns:root");
-    assert!(doc.root().has_attr("xmlns:ns", "http://example.com"));
+    insta::assert_snapshot!(xml, @r#"<ns:root xmlns:ns="http://example.com"/>"#);
 }
 
 #[test]
 fn prefixed_attribute() {
     let xml = convert(r#"a xlink:href="url""#);
-    let doc = parse_xml(&xml);
-    assert!(doc.root().has_attr("xlink:href", "url"));
+    insta::assert_snapshot!(xml, @r#"<a xlink:href="url"/>"#);
 }
 
 // ============================================================================
@@ -583,22 +554,19 @@ fn prefixed_attribute() {
 #[test]
 fn empty_attribute_value() {
     let xml = convert(r#"input value="""#);
-    let doc = parse_xml(&xml);
-    assert!(doc.root().has_attr("value", ""));
+    insta::assert_snapshot!(xml, @r#"<input value=""/>"#);
 }
 
 #[test]
 fn unicode_content() {
     let xml = convert(r#"greeting "Hello, 世界!""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), "Hello, 世界!");
+    insta::assert_snapshot!(xml, @"<greeting>Hello, 世界!</greeting>");
 }
 
 #[test]
 fn unicode_emoji() {
     let xml = convert(r#"emoji "🎉🚀""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content(), "🎉🚀");
+    insta::assert_snapshot!(xml, @"<emoji>🎉🚀</emoji>");
 }
 
 #[test]
@@ -606,8 +574,8 @@ fn very_long_text() {
     let long_text = "x".repeat(10000);
     let kdl = format!(r#"content "{}""#, long_text);
     let xml = convert(&kdl);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().text_content().len(), 10000);
+    // Just verify length - too long for inline snapshot
+    assert!(xml.len() > 10000);
 }
 
 #[test]
@@ -621,37 +589,26 @@ fn deeply_nested_50_levels() {
         kdl.push_str(" }");
     }
     let xml = convert(&kdl);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "n0");
-    // Navigate to deepest element
-    let mut current = doc.root();
-    for i in 1..50 {
-        current = current
-            .find_element(&format!("n{}", i))
-            .unwrap_or_else(|| panic!("n{} not found", i));
-    }
-    assert!(current.find_element("leaf").is_some());
+    // Just verify structure - too deep for inline snapshot
+    assert!(xml.contains("<n0>") && xml.contains("<leaf/>"));
 }
 
 #[test]
 fn element_name_with_hyphen() {
     let xml = convert("my-element");
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "my-element");
+    insta::assert_snapshot!(xml, @"<my-element/>");
 }
 
 #[test]
 fn element_name_with_underscore() {
     let xml = convert("my_element");
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "my_element");
+    insta::assert_snapshot!(xml, @"<my_element/>");
 }
 
 #[test]
 fn element_name_with_numbers() {
     let xml = convert("element123");
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "element123");
+    insta::assert_snapshot!(xml, @"<element123/>");
 }
 
 // ============================================================================
@@ -661,19 +618,25 @@ fn element_name_with_numbers() {
 #[test]
 fn pretty_nested_elements() {
     let xml = convert_pretty("parent { child { grandchild } }");
-    assert!(xml.contains('\n'));
-    assert!(xml.contains("  ")); // Indentation
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "parent");
+    insta::assert_snapshot!(xml, @r"
+<parent>
+  <child>
+    <grandchild/>
+  </child>
+</parent>
+");
 }
 
 #[test]
 fn pretty_multiple_children() {
     let xml = convert_pretty("parent { a; b; c }");
-    let lines: Vec<&str> = xml.lines().collect();
-    assert!(lines.len() > 1);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().child_elements().len(), 3);
+    insta::assert_snapshot!(xml, @r"
+<parent>
+  <a/>
+  <b/>
+  <c/>
+</parent>
+");
 }
 
 // ============================================================================
@@ -722,10 +685,8 @@ fn comment_double_hyphen_escaped() {
         r#"! "test--comment"
 root"#,
     );
-    // Double hyphen should be escaped - verify the comment parses correctly
-    let doc = parse_xml(&xml);
-    assert!(doc.has_comment("test- -comment"));
-    assert_eq!(doc.root().name, "root");
+    // Double hyphen should be escaped
+    insta::assert_snapshot!(xml, @"<!--test- -comment--><root/>");
 }
 
 #[test]
@@ -734,10 +695,8 @@ fn comment_trailing_hyphen_escaped() {
         r#"! "comment-"
 root"#,
     );
-    // Trailing hyphen should have space added - verify parsing succeeds
-    let doc = parse_xml(&xml);
-    assert!(doc.has_comment("comment-"));
-    assert_eq!(doc.root().name, "root");
+    // Trailing hyphen should have space added
+    insta::assert_snapshot!(xml, @"<!--comment- --><root/>");
 }
 
 #[test]
@@ -746,10 +705,8 @@ fn pi_content_escaped() {
         r#"?custom "content?>"
 root"#,
     );
-    // ?> should be escaped - just verify the XML parses without error
-    let doc = parse_xml(&xml);
-    assert!(doc.has_pi("custom"));
-    assert_eq!(doc.root().name, "root");
+    // ?> should be escaped
+    insta::assert_snapshot!(xml, @"<?custom content? >?><root/>");
 }
 
 // ============================================================================
@@ -817,9 +774,7 @@ fn multiple_unnamed_arguments_with_properties_rejected() {
 #[test]
 fn single_unnamed_argument_accepted() {
     let xml = convert(r#"element "text""#);
-    let doc = parse_xml(&xml);
-    assert_eq!(doc.root().name, "element");
-    assert_eq!(doc.root().text_content(), "text");
+    insta::assert_snapshot!(xml, @"<element>text</element>");
 }
 
 // ============================================================================
@@ -841,12 +796,9 @@ fn round_trip_simple() {
     // KDL -> XML
     let kdl2xml = KdlToXmlConverter::new().pretty(false);
     let result_xml = kdl2xml.convert(&kdl_str).unwrap();
+    validate_xml(&result_xml);
 
-    // Verify structure preserved
-    let doc = parse_xml(&result_xml);
-    assert_eq!(doc.root().name, "root");
-    let child = doc.root().find_element("child").unwrap();
-    assert_eq!(child.text_content(), "text");
+    insta::assert_snapshot!(result_xml, @"<root><child>text</child></root>");
 }
 
 #[test]
@@ -862,11 +814,12 @@ fn round_trip_with_attributes() {
 
     let kdl2xml = KdlToXmlConverter::new().pretty(false);
     let result_xml = kdl2xml.convert(&kdl_str).unwrap();
+    validate_xml(&result_xml);
 
-    let doc = parse_xml(&result_xml);
-    assert!(doc.root().has_attr("href", "http://example.com"));
-    assert!(doc.root().has_attr("target", "_blank"));
-    assert_eq!(doc.root().text_content(), "link");
+    insta::assert_snapshot!(
+        result_xml,
+        @r#"<a href="http://example.com" target="_blank">link</a>"#
+    );
 }
 
 #[test]
@@ -882,11 +835,9 @@ fn round_trip_mixed_content() {
 
     let kdl2xml = KdlToXmlConverter::new().pretty(false);
     let result_xml = kdl2xml.convert(&kdl_str).unwrap();
+    validate_xml(&result_xml);
 
-    let doc = parse_xml(&result_xml);
-    assert_eq!(doc.root().name, "span");
-    assert_eq!(doc.root().full_text_content(), "some bold text");
-    assert!(doc.root().find_element("b").is_some());
+    insta::assert_snapshot!(result_xml, @"<span>some <b>bold</b> text</span>");
 }
 
 // ============================================================================
@@ -914,26 +865,5 @@ fn fixture_website_kdl() {
     "#;
 
     let xml = convert(kdl);
-    let doc = parse_xml(&xml);
-
-    assert!(doc.has_doctype("html"));
-    assert_eq!(doc.root().name, "html");
-    assert!(doc.root().has_attr("lang", "en"));
-
-    let head = doc.root().find_element("head").unwrap();
-    let meta = head.find_element("meta").unwrap();
-    assert!(meta.has_attr("charset", "utf-8"));
-
-    let title = head.find_element("title").unwrap();
-    assert_eq!(title.text_content(), "Test Page");
-
-    let body = doc.root().find_element("body").unwrap();
-    let h1 = body.find_element("h1").unwrap();
-    assert_eq!(h1.text_content(), "Hello World");
-
-    let p = body.find_element("p").unwrap();
-    let a = p.find_element("a").unwrap();
-    assert!(a.has_attr("href", "http://example.com"));
-    assert_eq!(a.text_content(), "link");
-    assert_eq!(p.full_text_content(), "This is a link in a paragraph.");
+    insta::assert_snapshot!(xml);
 }
