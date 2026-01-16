@@ -1,6 +1,6 @@
 [package]
 name = "kdl-xml"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Marc-André Lureau <marcandre.lureau@redhat.com>"]
 description = "XML<->KDL conversion"
 license = "MIT OR Apache-2.0"
