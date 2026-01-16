@@ -150,9 +150,7 @@ fn doctype_xhtml() {
         r#"!doctype "html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\""
 html"#,
     );
-    insta::assert_snapshot!(xml, @r#"
-    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"><html/>
-    "#);
+    insta::assert_snapshot!(xml, @r#"<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"><html/>"#);
 }
 
 #[test]
@@ -366,24 +364,24 @@ fn element_name_with_numbers() {
 fn pretty_nested_elements() {
     let xml = convert_pretty("parent { child { grandchild } }");
     insta::assert_snapshot!(xml, @r"
-<parent>
-  <child>
-    <grandchild/>
-  </child>
-</parent>
-");
+    <parent>
+      <child>
+        <grandchild/>
+      </child>
+    </parent>
+    ");
 }
 
 #[test]
 fn pretty_multiple_children() {
     let xml = convert_pretty("parent { a; b; c }");
     insta::assert_snapshot!(xml, @r"
-<parent>
-  <a/>
-  <b/>
-  <c/>
-</parent>
-");
+    <parent>
+      <a/>
+      <b/>
+      <c/>
+    </parent>
+    ");
 }
 
 // ============================================================================

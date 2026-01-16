@@ -1,5 +1,5 @@
 ---
-source: tests/kdl2xml_integration.rs
+source: tests/kdl2xml.rs
 expression: xml
 ---
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><title>Test Page</title></head><body><h1>Hello World</h1><p>This is a <a href="http://example.com">link</a> in a paragraph.</p></body></html>

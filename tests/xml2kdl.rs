@@ -77,10 +77,10 @@ fn element_with_multiple_attributes() {
 fn nested_elements() {
     let kdl = convert("<parent><child/></parent>");
     insta::assert_snapshot!(kdl.trim(), @r"
-parent {
-    child
-}
-");
+    parent {
+        child
+    }
+    ");
 }
 
 #[test]
@@ -103,12 +103,12 @@ fn deeply_nested_elements() {
 fn multiple_children() {
     let kdl = convert("<parent><a/><b/><c/></parent>");
     insta::assert_snapshot!(kdl.trim(), @r"
-parent {
-    a
-    b
-    c
-}
-");
+    parent {
+        a
+        b
+        c
+    }
+    ");
 }
 
 #[test]
@@ -178,10 +178,10 @@ fn empty_text_preserved() {
 fn whitespace_only_between_elements_trimmed() {
     let kdl = convert("<parent>\n  <child/>\n</parent>");
     insta::assert_snapshot!(kdl.trim(), @r"
-parent {
-    child
-}
-");
+    parent {
+        child
+    }
+    ");
 }
 
 #[test]
@@ -266,9 +266,9 @@ fn cdata_preserves_special_chars() {
 fn xml_declaration() {
     let kdl = convert(r#"<?xml version="1.0"?><root/>"#);
     insta::assert_snapshot!(kdl.trim(), @r#"
-?xml version="1.0"
-root
-"#);
+    ?xml version="1.0"
+    root
+    "#);
 }
 
 #[test]
@@ -303,19 +303,19 @@ fn comment_discarded_by_default() {
 fn comment_as_node_when_enabled() {
     let kdl = convert_with_comments("<root><!-- comment --></root>");
     insta::assert_snapshot!(kdl.trim(), @r#"
-root {
-    ! " comment "
-}
-"#);
+    root {
+        ! " comment "
+    }
+    "#);
 }
 
 #[test]
 fn top_level_comment() {
     let kdl = convert_with_comments("<!-- top level --><root/>");
     insta::assert_snapshot!(kdl.trim(), @r#"
-! " top level "
-root
-"#);
+    ! " top level "
+    root
+    "#);
 }
 
 #[test]
@@ -432,9 +432,9 @@ fn pi_with_equals_in_value() {
     // PI with equals sign in attribute value (should not confuse parser)
     let kdl = convert(r#"<?custom expr="a=b"?><root/>"#);
     insta::assert_snapshot!(kdl.trim(), @r#"
-?custom expr="a=b"
-root
-"#);
+    ?custom expr="a=b"
+    root
+    "#);
 }
 
 #[test]
@@ -589,12 +589,12 @@ fn structure_preserved() {
     let xml = "<parent><a/><b/><c/></parent>";
     let kdl = convert(xml);
     insta::assert_snapshot!(kdl.trim(), @r"
-parent {
-    a
-    b
-    c
-}
-");
+    parent {
+        a
+        b
+        c
+    }
+    ");
 }
 
 #[test]
@@ -647,9 +647,7 @@ fn fixture_atom_feed() {
 fn compact_mixed_content() {
     let kdl = convert_compact("<p>This is a <strong>sample</strong> paragraph.</p>");
     // Validation happens in convert_compact() helper
-    insta::assert_snapshot!(kdl.trim(), @r#"
-    p { - "This is a "; strong sample; - " paragraph." }
-    "#);
+    insta::assert_snapshot!(kdl.trim(), @r#"p { - "This is a "; strong sample; - " paragraph." }"#);
 }
 
 #[test]

@@ -1,5 +1,5 @@
 ---
-source: tests/integration.rs
+source: tests/xml2kdl.rs
 expression: kdl
 ---
 ?xml version="1.0" encoding=UTF-8
