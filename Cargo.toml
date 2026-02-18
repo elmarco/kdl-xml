@@ -24,10 +24,10 @@ path = "src/bin/kdl2xml.rs"
 
 [dependencies]
 kdl = "6.5.0"
-quick-xml = "0.39.0"
+quick-xml = "0.39.1"
 clap = { version = "4", features = ["derive"] }
 thiserror = "2"
 
 [dev-dependencies]
 pretty_assertions = "1"
-insta = "1.41"
+insta = "1.46"
